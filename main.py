@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 import discord
 from discord.ext import commands
-TOKEN = os.getenv("DISCORD_TOKEN")
+
 
 
 load_dotenv()
@@ -78,5 +78,7 @@ async def on_reaction_add(reaction, user):
 @bot.command()
 async def ping(ctx):
     await ctx.send("shut up.")
+
+print(f"TOKEN LOADED: {'Yes' if TOKEN else 'No'}")
 
 bot.run(os.getenv("DISCORD_TOKEN"))
