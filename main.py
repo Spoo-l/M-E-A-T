@@ -27,12 +27,15 @@ async def on_message(message):
     if message.author.bot:
         return
 
-    if message.content.lower() == "file":
-        file_requests[message.id] = message.author.id
-        await message.channel.send(
-            f"{message.author.mention} has requested a file.\n"
-            f"Moderators, please react with {TRIGGER_EMOJI} to approve."
-        )
+ MODERATOR_ROLE_ID = 1378164944666755242  # already defined
+
+if message.content.lower() == "file":
+    file_requests[message.id] = message.author.id
+    await message.channel.send(
+        f"{message.author.mention} has requested a file.\n"
+        f"<@&{1378164944666755242}>, please react with {TRIGGER_EMOJI} to approve."
+    )
+
 
     await bot.process_commands(message)
 
