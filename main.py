@@ -1,23 +1,15 @@
-import os
-from dotenv import load_dotenv
 import discord
-from discord.ext import commands
-
-
-
-load_dotenv()
-
-
-TOKEN = os.getenv("DISCORD_TOKEN")
-
+from discord.ext import commands, tasks
+import os
+import random
+import asyncio  
 
 intents = discord.Intents.default()
+intents.members = True
 intents.message_content = True
 intents.reactions = True
-intents.members = True
 
-
-bot = commands.Bot(command_prefix='!', intents=intents)
+bot = commands.Bot(command_prefix="!", intents=intents)
 
 
 AUTHORIZED_ROLE_ID = 1378164944666755242  
@@ -78,7 +70,5 @@ async def on_reaction_add(reaction, user):
 @bot.command()
 async def ping(ctx):
     await ctx.send("shut up.")
-
-print(f"TOKEN LOADED: {'Yes' if TOKEN else 'No'}")
 
 bot.run(os.getenv("DISCORD_TOKEN"))
