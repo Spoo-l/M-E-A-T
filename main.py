@@ -27,7 +27,7 @@ file_requests = {}
 
 @bot.event
 async def on_ready():
-    print(f"✅ Bot is online! Logged in as {bot.user}")
+    print(f" Bot is online! Logged in as {bot.user}")
 
 @bot.event
 async def on_message(message):
@@ -74,9 +74,8 @@ async def on_reaction_add(reaction, user):
                     f"Please enable messages from server members."
                 )
 
+@bot.command()
+async def ping(ctx):
+    await ctx.send("shut up.")
 
-if TOKEN:
-    bot.run(TOKEN)
-else:
-    print("❌ DISCORD_TOKEN not found in environment.")
-
+bot.run(os.getenv("DISCORD_TOKEN"))
