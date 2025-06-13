@@ -60,4 +60,4 @@ async def on_reaction_add(reaction, user):
                     f"{target_user.mention}, I couldn’t DM you. Please enable messages from server members."
                 )
 
-bot.run("DISCORD_TOKEN")
+bot.run(os.getenv("DISCORD_TOKEN"))
