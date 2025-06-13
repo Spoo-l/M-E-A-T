@@ -59,3 +59,4 @@ async def on_reaction_add(reaction, user):
                 await message.channel.send(
                     f"{target_user.mention}, I couldn’t DM you. Please enable messages from server members."
                 )
+bot.run("MTM4MjkxMTQ0ODEyNDIyNzY0NQ.GNxk59.4p1ATkyTu9FwrqsaKB6eoCODuvbog7qi6Db1g4")
