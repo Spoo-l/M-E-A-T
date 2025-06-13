@@ -20,7 +20,7 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 
 
 AUTHORIZED_ROLE_ID = 1378164944666755242  
-TRIGGER_EMOJI = "📁" 
+TRIGGER_EMOJI = "<:Happi:1381476760708714617>" 
 
 
 file_requests = {}
