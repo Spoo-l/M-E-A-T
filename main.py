@@ -1,8 +1,12 @@
-import discord
-from discord.ext import commands, tasks
 import os
 import random
 import asyncio
+from datetime import datetime
+
+import discord
+from discord.ext import commands
+from discord.ui import Button, View
+
 
 intents = discord.Intents.default()
 intents.members = True
@@ -13,7 +17,6 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 AUTHORIZED_ROLE_ID = 1378164944666755242  
 TRIGGER_EMOJI = "<:Happi:1381476760708714617>"
-
 file_requests = {}
 
 def generate_random_serial():
@@ -47,14 +50,38 @@ async def generate_personnel_file(user):
 
     answers = {}
 
+    class ConfirmView(View):
+        def __init__(self):
+            super().__init__(timeout=60)
+            self.value = None
+
+        @discord.ui.button(label="OK", style=discord.ButtonStyle.success)
+        async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+            if interaction.user == user:
+                self.value = True
+                await interaction.response.edit_message(content="**File creation started.**", view=None)
+                self.stop()
+            else:
+                await interaction.response.send_message("You are not authorized to confirm this.", ephemeral=True)
+
     try:
+
+        await user.send("**CREATING FILE. . .** Click the button below to proceed.")
+        view = ConfirmView()
+        await user.send(view=view)
+        await view.wait()
+
+        if not view.value:
+            await user.send("You didn’t click OK. Process canceled.")
+            return
+
         await user.send("Let's build your MILITARY PERSONNEL FILE. Answer each question below:")
 
         for question, key in questions:
             await user.send(question)
             msg = await bot.wait_for('message', check=check, timeout=120)
             answers[key] = msg.content
-
+            
         serial_no = generate_random_serial()
         file_no = generate_random_file_no()
         ssn = generate_masked_ssn()
@@ -100,15 +127,20 @@ async def generate_personnel_file(user):
 
   DATE FILED:        {today}
 """
+
         await user.send("Here is your generated file:")
         await user.send(f"```{result}```")
 
     except asyncio.TimeoutError:
         await user.send("You took too long to respond. Please try again later.")
+    except discord.Forbidden:
+        pass
 
+ 
 @bot.event
 async def on_ready():
     print(f"Bot is online! Logged in as {bot.user}")
+
 
 @bot.event
 async def on_message(message):
@@ -123,6 +155,7 @@ async def on_message(message):
         )
 
     await bot.process_commands(message)
+
 
 @bot.event
 async def on_reaction_add(reaction, user):
@@ -146,7 +179,6 @@ async def on_reaction_add(reaction, user):
         target_user = guild.get_member(target_user_id)
         if target_user:
             try:
-             
                 await generate_personnel_file(target_user)
                 await message.channel.send(f"{target_user.mention}, check your DMs!")
                 del file_requests[message.id]
@@ -156,9 +188,9 @@ async def on_reaction_add(reaction, user):
                     f"Please enable messages from server members."
                 )
 
+
 @bot.command()
 async def ping(ctx):
     await ctx.send("shut up.")
 
 bot.run(os.getenv("DISCORD_TOKEN"))
- 
