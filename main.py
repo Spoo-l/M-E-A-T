@@ -36,6 +36,113 @@ SLOTS = [
     "<a:3heartbeat:1383591912866451477>", "<a:3hearteye:1383587571862606007>", "<a:gunshoot:1383588234881143026>", "<:fawn:1383887212189450321>", "<a:2hearts:1383887085483724882>", "<a:look:1383587727416496130>"
 ]
 
+user_debts = {}
+user_inventory = {}
+
+@bot.command()
+async def balance(ctx):
+    user_id = ctx.author.id
+    balance = user_balances.get(user_id, DEFAULT_BALANCE)
+    debt = user_debts.get(user_id, 0)
+    await ctx.send(f"**{ctx.author.display_name}**\nBalance: `{balance} coins`\nDebt: `{debt} coins`")
+
+@bot.command()
+async def slots(ctx, bet: int):
+    user_id = ctx.author.id
+    if bet <= 0:
+        await ctx.send("Bet must be a positive number.")
+        return
+    if bet > MAX_BET:
+        await ctx.send(f"Max bet is {MAX_BET} coins.")
+        return
+
+    balance = user_balances.get(user_id, DEFAULT_BALANCE)
+    if balance < bet:
+        debt = user_debts.get(user_id, 0)
+        user_debts[user_id] = debt + (bet - balance)
+        bet = balance
+        user_balances[user_id] = 0
+    else:
+        user_balances[user_id] = balance - bet
+
+    result = [random.choice(SLOTS) for _ in range(3)]
+    message = f"{' '.join(result)}"
+
+    if result[0] == result[1] == result[2]:
+        winnings = bet * 3
+        user_balances[user_id] += winnings
+        message += f"\nJackpot! You win {winnings} coins."
+    elif result[0] == result[1] or result[1] == result[2] or result[0] == result[2]:
+        winnings = int(bet * 1.5)
+        user_balances[user_id] += winnings
+        message += f"\nNice! You win {winnings} coins."
+    else:
+        message += f"\nNo match. You lost {bet} coins."
+
+    await ctx.send(message)
+
+@bot.command()
+async def beg(ctx):
+    user_id = ctx.author.id
+    responses = [
+        "No. I like seeing zero in your account.",
+        ".. fine. 50 tokens. Don't spend them all in one place. or do. House always wins."
+    ]
+    choice = random.choice(responses)
+    if "50 tokens" in choice:
+        user_balances[user_id] = user_balances.get(user_id, DEFAULT_BALANCE) + 50
+    await ctx.send(f"**{ctx.author.display_name}** begs...\n{choice}")
+
+@bot.command()
+async def buy(ctx, *, item: str):
+    user_id = ctx.author.id
+    item = item.lower()
+    prices = {
+        "dog": 500,
+        "cat": 500,
+        "car": 1500,
+        "house": 5000
+    }
+    if item not in prices:
+        await ctx.send("Item not available. Try: dog, cat, car, or house.")
+        return
+    balance = user_balances.get(user_id, DEFAULT_BALANCE)
+    if balance < prices[item]:
+        await ctx.send("Not enough coins. Consider begging or gambling.")
+        return
+    user_balances[user_id] = balance - prices[item]
+    inventory = user_inventory.get(user_id, set())
+    inventory.add(item)
+    user_inventory[user_id] = inventory
+    await ctx.send(f"**{ctx.author.display_name}** bought a {item}! 🎉")
+
+@bot.command()
+async def inventory(ctx):
+    user_id = ctx.author.id
+    items = user_inventory.get(user_id, set())
+    if not items:
+        await ctx.send("You don't own anything. Buy something with !buy.")
+        return
+    await ctx.send(f"**{ctx.author.display_name}**'s Inventory: {', '.join(items)}")
+
+@bot.command()
+async def checkrepos(ctx):
+    user_id = ctx.author.id
+    debt = user_debts.get(user_id, 0)
+    if debt < 1000:
+        await ctx.send("You're safe... for now.")
+        return
+    repossessed = []
+    inventory = user_inventory.get(user_id, set())
+    for item in list(inventory):
+        repossessed.append(item)
+        inventory.remove(item)
+    user_inventory[user_id] = inventory
+    if repossessed:
+        await ctx.send(f"**{ctx.author.display_name}**'s debt is too high. The following items were repossessed: {', '.join(repossessed)}")
+    else:
+        await ctx.send("You have nothing to repo. Maybe it's time to beg.")
+
 def generate_random_serial():
     return ''.join([str(random.randint(0, 9)) for _ in range(7)])
 
@@ -48,13 +155,13 @@ def generate_masked_ssn():
     last_four = ''.join([str(random.randint(0, 9)) for _ in range(4)])
     return f"XXX-XX-{last_four}"
 
-
 async def generate_personnel_file(user):
     def check(m):
         return m.author == user and isinstance(m.channel, discord.DMChannel)
 
     questions = [
         ("Enter NAME:", "name"),
+        ("Enter ONLINE USERNAME:", "username"),
         ("Enter FACTION:", "faction"),
         ("Enter DATE OF BIRTH:", "dob"),
         ("Enter PLACE OF BIRTH:", "pob"),
@@ -109,12 +216,11 @@ async def generate_personnel_file(user):
 ===================================
  MILITARY PERSONNEL FILE 
 ===================================
-
   NAME:           {answers['name']}
+  USERNAME:       {answers['username']}
   SERIAL NO.:     {serial_no}
 
   FACTION:        {answers['faction']}
-
 -----------------------------------
 
   DATE OF BIRTH:     {answers['dob']}
