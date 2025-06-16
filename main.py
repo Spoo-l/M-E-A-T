@@ -446,15 +446,15 @@ async def slot(ctx, bet: int):
     result = [random.choice(SLOTS) for _ in range(3)]
     await ctx.send(f"{user.mention} {' | '.join(result)}")
 
-    else:
-            winnings = bet * 5
-            message = "Triple match."
-    elif result[0] == result[1] or result[1] == result[2] or result[0] == result[2]:
-        winnings = bet * 2
-        message = "Double match."
-    else:
-        winnings = 0
-        message = "No match. Let's try again."
+    if result[0] == result[1] == result[2]:
+    winnings = bet * 5
+    message = "Triple match."
+elif result[0] == result[1] or result[1] == result[2] or result[0] == result[2]:
+    winnings = bet * 2
+    message = "Double match."
+else:
+    winnings = 0
+    message = "No match. Let's try again."
 
     user_balances[user.id] += winnings
     await ctx.send(f"{user.mention} {message} You won {winnings} coins.\nNew balance: {user_balances[user.id]}")
