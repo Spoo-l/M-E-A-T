@@ -94,6 +94,16 @@ async def beg(ctx):
     await ctx.send(f"**{ctx.author.display_name}** begs...\n{choice}")
 
 @bot.command()
+async def borrow(ctx, amount: int):
+    user_id = ctx.author.id
+    if amount <= 0:
+        await ctx.send("You can't borrow a non-positive amount.")
+        return
+    user_balances[user_id] = user_balances.get(user_id, DEFAULT_BALANCE) + amount
+    user_debts[user_id] = user_debts.get(user_id, 0) + amount
+    await ctx.send(f"**{ctx.author.display_name}** borrowed {amount} coins. Use them wisely... or don't.")
+
+@bot.command()
 async def buy(ctx, *, item: str):
     user_id = ctx.author.id
     item = item.lower()
@@ -101,10 +111,12 @@ async def buy(ctx, *, item: str):
         "dog": 500,
         "cat": 500,
         "car": 1500,
-        "house": 5000
+        "house": 5000,
+        "luxury car": 8000,
+        "mansion": 15000
     }
     if item not in prices:
-        await ctx.send("Item not available. Try: dog, cat, car, or house.")
+        await ctx.send("Item not available. Try: dog, cat, car, luxury car, house, or mansion.")
         return
     balance = user_balances.get(user_id, DEFAULT_BALANCE)
     if balance < prices[item]:
@@ -115,6 +127,26 @@ async def buy(ctx, *, item: str):
     inventory.add(item)
     user_inventory[user_id] = inventory
     await ctx.send(f"**{ctx.author.display_name}** bought a {item}! 🎉")
+
+@bot.command()
+async def sell(ctx, *, item: str):
+    user_id = ctx.author.id
+    item = item.lower()
+    values = {
+        "dog": 250,
+        "cat": 250,
+        "car": 750,
+        "house": 2500,
+        "luxury car": 4000,
+        "mansion": 7500
+    }
+    inventory = user_inventory.get(user_id, set())
+    if item not in inventory:
+        await ctx.send("You don't own that item.")
+        return
+    user_inventory[user_id].remove(item)
+    user_balances[user_id] = user_balances.get(user_id, DEFAULT_BALANCE) + values[item]
+    await ctx.send(f"You sold your {item} for {values[item]} coins.")
 
 @bot.command()
 async def inventory(ctx):
@@ -154,6 +186,7 @@ def generate_random_file_no():
 def generate_masked_ssn():
     last_four = ''.join([str(random.randint(0, 9)) for _ in range(4)])
     return f"XXX-XX-{last_four}"
+
 
 async def generate_personnel_file(user):
     def check(m):
