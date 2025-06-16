@@ -1,11 +1,29 @@
 import os
 import random
 import asyncio
-from datetime import datetime
-
 import discord
 from discord.ext import commands
 from discord.ui import Button, View
+
+AUTHORIZED_ROLE_ID = 1378164944666755242 
+TRIGGER_EMOJI = "<:Happi:1381476760708714617>"
+FISH_CHANNEL_ID = 1382936876985483337  
+MEMBER_ROLE_ID = 1378204196477730836  
+DEFAULT_BALANCE = 1000
+MAX_BET = 500
+SLOTS = [  "<a:3heartbeat:1383591912866451477>", "<a:3hearteye:1383587571862606007>", "<a:gunshoot:1383588234881143026>", "<:fawn:1383887212189450321>", "<a:2hearts:1383887085483724882>", "<a:look:1383587727416496130>"
+]
+
+FACTION_THREADS = {
+    "SpecGru": 123456789012345678,
+    "Shadow Company": 234567890123456789,
+    "KorTac": 345678901234567890,
+    "141": 456789012345678901,
+    "Konni": 567890123456789012,
+}
+
+file_requests = {} 
+user_balances = {} 
 
 intents = discord.Intents.default()
 intents.members = True
@@ -14,340 +32,123 @@ intents.reactions = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-AUTHORIZED_ROLE_ID = 1378164944666755242
-MEMBER_ROLE_ID = 1378204196477730836
-FISH_CHANNEL_ID = 1382936876985483337
-TRIGGER_EMOJI = "<:check:1383527537640083556>"
-
-file_requests = {}
-
-FACTION_THREADS = {
-    "SpecGru": 1382555575774220339,
-    "Shadow Company": 1382555520388431964,
-    "KorTac": 1382555644502216744,
-    "141": 1382555452772192399,
-    "Konni": 1382556557631426630
-}
-
-user_balances = {}
-DEFAULT_BALANCE = 100
-MAX_BET = 8000
-SLOTS = [
-    "<a:3heartbeat:1383591912866451477>", "<a:3hearteye:1383587571862606007>", "<a:gunshoot:1383588234881143026>", "<:fawn:1383887212189450321>", "<a:2hearts:1383887085483724882>", "<a:look:1383587727416496130>"
-]
-
-user_debts = {}
-user_inventory = {}
-
-@bot.command()
-async def helpme(ctx):
-    commands_list = [
-        "!balance - Check your coin balance and debt",
-        "!slots <bet> - Play the slot machine",
-        "!beg - Beg for coins",
-        "!borrow <amount> - Borrow coins (increases debt)",
-        "!buy <item> - Buy items like pets, cars, and houses",
-        "!sell <item> - Sell items from your inventory",
-        "!inventory - View your owned items",
-        "!checkrepos - Check if you’ve been repossessed",
-        "!helpme - Show this help message"
-    ]
-    await ctx.send("**Available Commands:**\n" + "\n".join(commands_list))
-
-
-@bot.command()
-async def slots(ctx, bet: int):
-    user_id = ctx.author.id
-    if bet <= 0:
-        await ctx.send("Bet must be a positive number.")
-        return
-    if bet > MAX_BET:
-        await ctx.send(f"Max bet is {MAX_BET} coins.")
-        return
-
-    balance = user_balances.get(user_id, DEFAULT_BALANCE)
-    if balance < bet:
-        debt = user_debts.get(user_id, 0)
-        user_debts[user_id] = debt + (bet - balance)
-        bet = balance
-        user_balances[user_id] = 0
-    else:
-        user_balances[user_id] = balance - bet
-
-    result = [random.choice(SLOTS) for _ in range(3)]
-    message = f"{' '.join(result)}"
-
-    if result[0] == result[1] == result[2]:
-        winnings = bet * 3
-        user_balances[user_id] += winnings
-        message += f"\nJackpot! You win {winnings} coins."
-    elif result[0] == result[1] or result[1] == result[2] or result[0] == result[2]:
-        winnings = int(bet * 1.5)
-        user_balances[user_id] += winnings
-        message += f"\nNice! You win {winnings} coins."
-    else:
-        message += f"\nNo match. You lost {bet} coins."
-
-    await ctx.send(message)
-
-@bot.command()
-async def beg(ctx):
-    user_id = ctx.author.id
-    responses = [
-        "No. I like seeing zero in your account.",
-        ".. fine. 50 tokens. Don't spend them all in one place. or do. House always wins."
-    ]
-    choice = random.choice(responses)
-    if "50 tokens" in choice:
-        user_balances[user_id] = user_balances.get(user_id, DEFAULT_BALANCE) + 50
-    await ctx.send(f"**{ctx.author.display_name}** begs...\n{choice}")
-
-@bot.command()
-async def borrow(ctx, amount: int):
-    user_id = ctx.author.id
-    if amount <= 0:
-        await ctx.send("You can't borrow a non-positive amount.")
-        return
-    user_balances[user_id] = user_balances.get(user_id, DEFAULT_BALANCE) + amount
-    user_debts[user_id] = user_debts.get(user_id, 0) + amount
-    await ctx.send(f"**{ctx.author.display_name}** borrowed {amount} coins. Use them wisely... or don't.")
-
-@bot.command()
-async def buy(ctx, *, item: str):
-    user_id = ctx.author.id
-    item = item.lower()
-    prices = {
-        "dog": 500,
-        "cat": 500,
-        "car": 1500,
-        "house": 5000,
-        "luxury car": 8000,
-        "mansion": 15000
-    }
-    if item not in prices:
-        await ctx.send("Item not available. Try: dog, cat, car, luxury car, house, or mansion.")
-        return
-    balance = user_balances.get(user_id, DEFAULT_BALANCE)
-    if balance < prices[item]:
-        await ctx.send("Not enough coins. Consider begging or gambling.")
-        return
-    user_balances[user_id] = balance - prices[item]
-    inventory = user_inventory.get(user_id, set())
-    inventory.add(item)
-    user_inventory[user_id] = inventory
-    await ctx.send(f"**{ctx.author.display_name}** bought a {item}! 🎉")
-
-@bot.command()
-async def sell(ctx, *, item: str):
-    user_id = ctx.author.id
-    item = item.lower()
-    values = {
-        "dog": 250,
-        "cat": 250,
-        "car": 750,
-        "house": 2500,
-        "luxury car": 4000,
-        "mansion": 7500
-    }
-    inventory = user_inventory.get(user_id, set())
-    if item not in inventory:
-        await ctx.send("You don't own that item.")
-        return
-    user_inventory[user_id].remove(item)
-    user_balances[user_id] = user_balances.get(user_id, DEFAULT_BALANCE) + values[item]
-    await ctx.send(f"You sold your {item} for {values[item]} coins.")
-
-@bot.command()
-async def inventory(ctx):
-    user_id = ctx.author.id
-    items = user_inventory.get(user_id, set())
-    if not items:
-        await ctx.send("You don't own anything. Buy something with !buy.")
-        return
-    await ctx.send(f"**{ctx.author.display_name}**'s Inventory: {', '.join(items)}")
-
-@bot.command()
-async def checkrepos(ctx):
-    user_id = ctx.author.id
-    debt = user_debts.get(user_id, 0)
-    if debt < 1000:
-        await ctx.send("You're safe... for now.")
-        return
-    repossessed = []
-    inventory = user_inventory.get(user_id, set())
-    for item in list(inventory):
-        repossessed.append(item)
-        inventory.remove(item)
-    user_inventory[user_id] = inventory
-    if repossessed:
-        await ctx.send(f"**{ctx.author.display_name}**'s debt is too high. The following items were repossessed: {', '.join(repossessed)}")
-    else:
-        await ctx.send("You have nothing to repo. Maybe it's time to beg.")
 
 def generate_random_serial():
-    return ''.join([str(random.randint(0, 9)) for _ in range(7)])
+    return ''.join(str(random.randint(0, 9)) for _ in range(7))
+
 
 def generate_random_file_no():
     letters = ''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ', k=3))
     numbers = ''.join(random.choices('0123456789', k=2))
     return f"{letters}-{numbers}"
 
+
 def generate_masked_ssn():
-    last_four = ''.join([str(random.randint(0, 9)) for _ in range(4)])
-    return f"XXX-XX-{last_four}"
+    last_four = ''.join(str(random.randint(0, 9)) for _ in range(4))
+    return f"***-**-{last_four}"
 
-async def generate_personnel_file(user):
-    def check(m):
-        return m.author == user and isinstance(m.channel, discord.DMChannel)
 
-    questions = [
-        ("Enter NAME:", "name"),
-        ("Enter ONLINE USERNAME:", "username"),
-        ("Enter FACTION:", "faction"),
-        ("Enter DATE OF BIRTH:", "dob"),
-        ("Enter PLACE OF BIRTH:", "pob"),
-        ("Enter ACTIVE DUTY DATE:", "active_duty"),
-        ("Enter DISCHARGE DATE:", "discharge"),
-        ("Enter DISCHARGE TYPE:", "discharge_type"),
-        ("Enter LAST RANK:", "last_rank"),
-        ("Enter SERVICE STATUS:", "service_status"),
-        ("Enter any NOTES:", "notes"),
-    ]
+def format_file(answers):
+    lines = [f"{key.upper()}: {value}" for key, value in answers.items()]
+    return "\n".join(lines)
 
-    answers = {}
 
-    class ConfirmView(View):
-        def __init__(self):
-            super().__init__(timeout=60)
-            self.value = None
+class EditButton(Button):
+    def __init__(self, label: str, key: str):
+        super().__init__(label=label, style=discord.ButtonStyle.primary)
+        self.key = key
 
-        @discord.ui.button(label="OK", style=discord.ButtonStyle.success)
-        async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
-            if interaction.user == user:
-                self.value = True
-                await interaction.response.edit_message(content="**File creation started.**", view=None)
-                self.stop()
-            else:
-                await interaction.response.send_message("You are not authorized to confirm this.", ephemeral=True)
+    async def callback(self, interaction: discord.Interaction):
+        view: EditView = self.view
+        user = interaction.user
 
-    try:
-        await user.send("**CREATING FILE. . .** Click the button below to proceed.")
-        view = ConfirmView()
-        await user.send(view=view)
-        await view.wait()
-
-        if not view.value:
-            await user.send("You didn’t click OK. Process canceled.")
+        if user != view.user:
+            await interaction.response.send_message("This isn't your edit menu.", ephemeral=True)
             return
 
-        await user.send("Building your MILITARY PERSONNEL FILE. Answer each question below. Make sure FACTION is spelled exactly like one of: SpecGru, Shadow Company, KorTac, 141, or Konni.")
+        await interaction.response.send_message(f"Please enter a new value for **{self.key.upper()}**:", ephemeral=True)
 
-        for question, key in questions:
-            await user.send(question)
+        def check(m):
+            return m.author == user and isinstance(m.channel, discord.DMChannel)
+
+        try:
             msg = await bot.wait_for('message', check=check, timeout=120)
-            answers[key] = msg.content
+            view.answers[self.key] = msg.content.strip()
+            await interaction.followup.send(f"Updated **{self.key.upper()}** to: {msg.content}", ephemeral=True)
+        except asyncio.TimeoutError:
+            await interaction.followup.send("You took too long to respond. Edit cancelled.", ephemeral=True)
 
-        serial_no = generate_random_serial()
-        file_no = generate_random_file_no()
-        ssn = generate_masked_ssn()
-        today = datetime.today().strftime("%d %b %Y")
 
-        def format_file():
-            return f"""
-===================================
- MILITARY PERSONNEL FILE 
-===================================
-  NAME:           {answers['name']}
-  USERNAME:       {answers['username']}
-  SERIAL NO.:     {serial_no}
+class EditView(View):
+    def __init__(self, user, answers, timeout=120):
+        super().__init__(timeout=timeout)
+        self.user = user
+        self.answers = answers
+        for key in answers.keys():
+            self.add_item(EditButton(label=key.upper(), key=key))
 
-  FACTION:        {answers['faction']}
------------------------------------
 
-  DATE OF BIRTH:     {answers['dob']}
-  PLACE OF BIRTH:    {answers['pob']}
-  ACTIVE DUTY:       {answers['active_duty']}
-  DISCHARGE:         {answers['discharge']}
-  DISCHARGE TYPE:    {answers['discharge_type']}
-  LAST RANK:         {answers['last_rank']}
-  SERVICE STATUS:    {answers['service_status']}
+class SubmitView(View):
+    def __init__(self, user, timeout=60):
+        super().__init__(timeout=timeout)
+        self.user = user
+        self.confirmed = False
 
-  FILE NO.:          {file_no}
-  SOCIAL SECURITY:   {ssn}
+    @discord.ui.button(label="Submit File", style=discord.ButtonStyle.success)
+    async def submit(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user != self.user:
+            await interaction.response.send_message("This isn't your file to submit.", ephemeral=True)
+            return
 
-  NOTES:
-    {answers['notes']}
+        self.confirmed = True
+        await interaction.response.send_message("File submitted.", ephemeral=True)
+        self.stop()
 
------------------------------------
 
-  FILED BY:          MX-4719-E
-  DATE FILED:        {today}
-"""
+async def generate_personnel_file(user: discord.Member):
+    answers = {
+        "name": user.name,
+        "serial": generate_random_serial(),
+        "file_no": generate_random_file_no(),
+        "ssn": generate_masked_ssn(),
+        "faction": "141",
+    }
 
-        await user.send("Here is your generated file:")
-        await user.send(f"```{format_file()}```")
+    try:
+        await user.send("**CREATING FILE...**")
 
-        class EditButton(Button):
-            def __init__(self, label, key):
-                super().__init__(label=label, style=discord.ButtonStyle.primary)
-                self.key = key
+        await user.send(f"Here is your current personnel file:\n```{format_file(answers)}```")
 
-            async def callback(self, interaction: discord.Interaction):
-                if interaction.user != user:
-                    await interaction.response.send_message("This isn't your file to edit.", ephemeral=True)
-                    return
-                await interaction.response.send_message(f"Re-enter value for {self.key.upper()}:", ephemeral=True)
-                try:
-                    new_msg = await bot.wait_for('message', check=check, timeout=60)
-                    answers[self.key] = new_msg.content
-                    await interaction.followup.send(f"{self.key.upper()} updated.", ephemeral=True)
-                except asyncio.TimeoutError:
-                    await interaction.followup.send("You took too long. Field unchanged.", ephemeral=True)
 
-        class EditView(View):
-            def __init__(self):
-                super().__init__(timeout=120)
-                for _, key in questions:
-                    self.add_item(EditButton(label=key.upper(), key=key))
+        await user.send("Would you like to edit any field? Click a button below to edit a specific field:")
 
-        await user.send("Would you like to edit any field?")
-        view = EditView()
-        await user.send("Click a button below to edit a specific field:", view=view)
-        await asyncio.sleep(60)
+        edit_view = EditView(user=user, answers=answers)
+        await user.send(view=edit_view)
+        
+        await edit_view.wait()
 
-        await user.send("Here’s your updated file:")
-        await user.send(f"```{format_file()}```")
+        await user.send(f"Here’s your updated file:\n```{format_file(answers)}```")
 
-        class SubmitView(View):
-            def __init__(self):
-                super().__init__(timeout=60)
-                self.confirmed = False
 
-            @discord.ui.button(label="Submit File", style=discord.ButtonStyle.success)
-            async def submit(self, interaction: discord.Interaction, button: discord.ui.Button):
-                if interaction.user == user:
-                    self.confirmed = True
-                    await interaction.response.send_message("File submitted.", ephemeral=True)
-                    self.stop()
-                else:
-                    await interaction.response.send_message("This isn't your file to submit.", ephemeral=True)
-
-        submit_view = SubmitView()
+        submit_view = SubmitView(user=user)
         await user.send("Click to submit file to the appropriate faction thread.", view=submit_view)
         await submit_view.wait()
 
         if submit_view.confirmed:
-            faction_name = answers['faction']
-            thread_id = FACTION_THREADS.get(faction_name)
-            if thread_id:
-                thread = bot.get_channel(thread_id)
-                if thread:
-                    await thread.send(f"```{format_file()}```")
-                    await user.send("Your file was sent to the faction thread.")
+            faction_name = answers.get('faction', None)
+            if faction_name:
+                thread_id = FACTION_THREADS.get(faction_name)
+                if thread_id:
+                    thread = bot.get_channel(thread_id)
+                    if thread:
+                        await thread.send(f"```{format_file(answers)}```")
+                        await user.send("Your file was sent to the faction thread.")
+                    else:
+                        await user.send("Could not find the thread. Check FACTION spelling or thread setup.")
                 else:
-                    await user.send("Could not find the thread. Check FACTION spelling.")
+                    await user.send("No thread mapped for that FACTION. Try again or recheck guidelines.")
             else:
-                await user.send("No thread mapped for that FACTION. Try again or recheck guidelines.")
+                await user.send("Faction not specified in your file. Cannot send.")
         else:
             await user.send("You didn’t submit the file.")
 
@@ -363,21 +164,42 @@ async def on_ready():
 
 
 @bot.event
+async def on_member_join(member):
+    role = discord.utils.get(member.guild.roles, name="Unverified")
+    if role:
+        try:
+            await member.add_roles(role, reason="Assigned Unverified role on join")
+            print(f"Assigned 'Unverified' to {member.name}")
+        except discord.Forbidden:
+            print(f"Missing permissions to assign role to {member.name}")
+        except discord.HTTPException as e:
+            print(f"Failed to assign role to {member.name}: {e}")
+    else:
+        print("Role 'Unverified' not found.")
+
+
+@bot.event
 async def on_message(message):
     if message.author.bot:
         return
 
 
     if message.channel.id == FISH_CHANNEL_ID and message.content.strip().lower() == "fish":
-        member_role = discord.utils.get(message.guild.roles, id=MEMBER_ROLE_ID)
-        if member_role:
+        guild = message.guild
+        member = message.author
+        member_role = discord.utils.get(guild.roles, id=MEMBER_ROLE_ID)
+        unverified_role = discord.utils.get(guild.roles, name="Unverified")
+
+        if member_role and member_role not in member.roles:
             try:
-                await message.author.add_roles(member_role, reason="Said 'Fish' in the designated channel")
-                await message.channel.send(f"{message.author.mention} has been assigned the Member role.")
+                await member.add_roles(member_role, reason="Said 'fish' in verification channel")
+                if unverified_role in member.roles:
+                    await member.remove_roles(unverified_role, reason="Verified via 'fish'")
+                await message.add_reaction("✅")
             except discord.Forbidden:
-                await message.channel.send("I don’t have permission to assign roles.")
+                await message.channel.send("I don't have permission to manage roles!", delete_after=10)
             except discord.HTTPException as e:
-                await message.channel.send(f"Role assignment failed: {e}")
+                await message.channel.send(f"Something went wrong: {e}", delete_after=10)
 
 
     if message.content.lower() == "file":
@@ -421,7 +243,6 @@ async def on_reaction_add(reaction, user):
                     f"Please enable messages from server members."
                 )
 
-
 @bot.command()
 async def ping(ctx):
     await ctx.send("shut up.")
@@ -447,65 +268,17 @@ async def slot(ctx, bet: int):
     await ctx.send(f"{user.mention} {' | '.join(result)}")
 
     if result[0] == result[1] == result[2]:
-    winnings = bet * 5
-    message = "Triple match."
-elif result[0] == result[1] or result[1] == result[2] or result[0] == result[2]:
-    winnings = bet * 2
-    message = "Double match."
-else:
-    winnings = 0
-    message = "No match. Let's try again."
+        winnings = bet * 5
+        message = "Triple match."
+    elif result[0] == result[1] or result[1] == result[2] or result[0] == result[2]:
+        winnings = bet * 2
+        message = "Double match."
+    else:
+        winnings = 0
+        message = "No match. Let's try again."
 
     user_balances[user.id] += winnings
     await ctx.send(f"{user.mention} {message} You won {winnings} coins.\nNew balance: {user_balances[user.id]}")
 
-@bot.event
-async def on_member_join(member):
-    role = discord.utils.get(member.guild.roles, name="Unverified")
-    if role:
-        try:
-            await member.add_roles(role, reason="Assigned Unverified role on join")
-            print(f"Assigned 'Unverified' to {member.name}")
-        except discord.Forbidden:
-            print(f"Missing permissions to assign role to {member.name}")
-        except discord.HTTPException as e:
-            print(f"Failed to assign role to {member.name}: {e}")
-    else:
-        print("Role 'Unverified' not found.")
-
-@bot.event
-async def on_message(message):
-    if message.author.bot:
-        return
-
-    FISH_CHANNEL_ID = 1382936876985483337
-    MEMBER_ROLE_ID = 1378204196477730836
-
-    if message.channel.id == FISH_CHANNEL_ID and message.content.strip().lower() == "fish":
-        guild = message.guild
-        member = message.author
-        member_role = discord.utils.get(guild.roles, id=MEMBER_ROLE_ID)
-        unverified_role = discord.utils.get(guild.roles, name="Unverified")
-
-        if member_role and member_role not in member.roles:
-            try:
-                await member.add_roles(member_role, reason="Said 'fish' in verification channel")
-                if unverified_role in member.roles:
-                    await member.remove_roles(unverified_role, reason="Verified via 'fish'")
-                await message.add_reaction("✅")
-            except discord.Forbidden:
-                await message.channel.send("I don't have permission to manage roles!", delete_after=10)
-            except discord.HTTPException as e:
-                await message.channel.send(f"Something went wrong: {e}", delete_after=10)
-
-    
-    if message.content.lower() == "file":
-        file_requests[message.id] = message.author.id
-        await message.channel.send(
-            f"{message.author.mention} has requested a file.\n"
-            f"<@&{AUTHORIZED_ROLE_ID}> react with {TRIGGER_EMOJI} to accept."
-        )
-
-    await bot.process_commands(message)
 
 bot.run(os.getenv("DISCORD_TOKEN"))
