@@ -53,14 +53,7 @@ async def helpme(ctx):
         "!helpme - Show this help message"
     ]
     await ctx.send("**Available Commands:**\n" + "\n".join(commands_list))
-    
-bot.remove_command("balance")
-@bot.command()
-async def balance(ctx):
-    user_id = ctx.author.id
-    balance = user_balances.get(user_id, DEFAULT_BALANCE)
-    debt = user_debts.get(user_id, 0)
-    await ctx.send(f"**{ctx.author.display_name}**\nBalance: `{balance} coins`\nDebt: `{debt} coins`")
+
 
 @bot.command()
 async def slots(ctx, bet: int):
