@@ -13,7 +13,7 @@ intents.reactions = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 AUTHORIZED_ROLE_ID = 1378164944666755242
-TRIGGER_EMOJI = "✅"
+TRIGGER_EMOJI = ":check:1383527537640083556"
 FISH_CHANNEL_ID = 1382936876985483337
 MEMBER_ROLE_ID = 1378204196477730836
 DEFAULT_BALANCE = 1000
@@ -114,10 +114,10 @@ class SubmitView(View):
 
 async def generate_personnel_file(user: discord.Member):
     questions = [
-        ("name", "What is your full name?"),
-        ("age", "What is your age?"),
-        ("rank", "What is your rank?"),
-        ("faction", "What faction do you belong to? (SpecGru, Shadow Company, KorTac, 141, Konni)"),
+        ("name", "full name"),
+        ("age", "age"),
+        ("rank", "rank"),
+        ("faction", " faction (SpecGru, Shadow Company, KorTac, 141, Konni)"),
     ]
     try:
         await user.send("**CREATING FILE...** Please answer the following questions:")
