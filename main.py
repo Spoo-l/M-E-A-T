@@ -53,7 +53,8 @@ async def helpme(ctx):
         "!helpme - Show this help message"
     ]
     await ctx.send("**Available Commands:**\n" + "\n".join(commands_list))
-
+    
+bot.remove_command("balance")
 @bot.command()
 async def balance(ctx):
     user_id = ctx.author.id
@@ -452,10 +453,6 @@ async def slot(ctx, bet: int):
     result = [random.choice(SLOTS) for _ in range(3)]
     await ctx.send(f"{user.mention} {' | '.join(result)}")
 
-    if result[0] == result[1] == result[2]:
-        if result[0] == "7️":
-            winnings = bet * 10
-            message = "JACKPOT! Triple 7s!"
         else:
             winnings = bet * 5
             message = "Triple match."
@@ -468,13 +465,6 @@ async def slot(ctx, bet: int):
 
     user_balances[user.id] += winnings
     await ctx.send(f"{user.mention} {message} You won {winnings} coins.\nNew balance: {user_balances[user.id]}")
-
-
-@bot.command()
-async def balance(ctx):
-    balance = user_balances.get(ctx.author.id, DEFAULT_BALANCE)
-    await ctx.send(f"{ctx.author.mention} You have {balance} coins.")
-
 
 @bot.event
 async def on_member_join(member):
