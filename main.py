@@ -1,115 +1,84 @@
+128
+129
+130
+131
+132
+133
+134
+135
+136
+137
+138
+139
+140
+141
+142
+143
+144
+145
+146
+147
+148
+149
+150
+151
+152
+153
+154
+155
+156
+157
+158
+159
+160
+161
+162
+163
+164
+165
+166
+167
+168
+169
+170
+171
+172
+173
+174
+175
+176
+177
+178
+179
+180
+181
+182
+183
+184
+185
+186
+187
+188
+189
+190
+191
+192
+193
+194
+195
+196
+197
+198
+199
+200
+201
+202
+203
+204
+205
+206
 import os
-import random
-import asyncio
-from datetime import datetime
-
-import discord
-from discord.ext import commands
-from discord.ui import Button, View
-
-intents = discord.Intents.default()
-intents.members = True
-intents.message_content = True
-intents.reactions = True
-
-bot = commands.Bot(command_prefix="!", intents=intents)
-
-AUTHORIZED_ROLE_ID = 1378164944666755242
-MEMBER_ROLE_ID = 1378204196477730836
-FISH_CHANNEL_ID = 1382936876985483337
-TRIGGER_EMOJI = "<:check:1383527537640083556>"
-
-file_requests = {}
-
-FACTION_THREADS = {
-    "SpecGru": 1382555575774220339,
-    "Shadow Company": 1382555520388431964,
-    "KorTac": 1382555644502216744,
-    "141": 1382555452772192399,
-    "Konni": 1382556557631426630
-}
-
-user_balances = {}
-DEFAULT_BALANCE = 100
-MAX_BET = 8000
-SLOTS = [
-    "<a:3heartbeat:1383591912866451477>", "<a:3hearteye:1383587571862606007>", "<a:gunshoot:1383588234881143026>", "<:fawn:1383887212189450321>", "<a:2hearts:1383887085483724882>", "<a:look:1383587727416496130>"
-]
-
-user_debts = {}
-user_inventory = {}
-
-@bot.command()
-async def balance(ctx):
-    user_id = ctx.author.id
-    balance = user_balances.get(user_id, DEFAULT_BALANCE)
-    debt = user_debts.get(user_id, 0)
-    await ctx.send(f"**{ctx.author.display_name}**\nBalance: `{balance} coins`\nDebt: `{debt} coins`")
-
-@bot.command()
-async def slots(ctx, bet: int):
-    user_id = ctx.author.id
-    if bet <= 0:
-        await ctx.send("Bet must be a positive number.")
-        return
-    if bet > MAX_BET:
-        await ctx.send(f"Max bet is {MAX_BET} coins.")
-        return
-
-    balance = user_balances.get(user_id, DEFAULT_BALANCE)
-    if balance < bet:
-        debt = user_debts.get(user_id, 0)
-        user_debts[user_id] = debt + (bet - balance)
-        bet = balance
-        user_balances[user_id] = 0
-    else:
-        user_balances[user_id] = balance - bet
-
-    result = [random.choice(SLOTS) for _ in range(3)]
-    message = f"{' '.join(result)}"
-
-    if result[0] == result[1] == result[2]:
-        winnings = bet * 3
-        user_balances[user_id] += winnings
-        message += f"\nJackpot! You win {winnings} coins."
-    elif result[0] == result[1] or result[1] == result[2] or result[0] == result[2]:
-        winnings = int(bet * 1.5)
-        user_balances[user_id] += winnings
-        message += f"\nNice! You win {winnings} coins."
-    else:
-        message += f"\nNo match. You lost {bet} coins."
-
-    await ctx.send(message)
-
-@bot.command()
-async def beg(ctx):
-    user_id = ctx.author.id
-    responses = [
-        "No. I like seeing zero in your account.",
-        ".. fine. 50 tokens. Don't spend them all in one place. or do. House always wins."
-    ]
-    choice = random.choice(responses)
-    if "50 tokens" in choice:
-        user_balances[user_id] = user_balances.get(user_id, DEFAULT_BALANCE) + 50
-    await ctx.send(f"**{ctx.author.display_name}** begs...\n{choice}")
-
-@bot.command()
-async def borrow(ctx, amount: int):
-    user_id = ctx.author.id
-    if amount <= 0:
-        await ctx.send("You can't borrow a non-positive amount.")
-        return
-    user_balances[user_id] = user_balances.get(user_id, DEFAULT_BALANCE) + amount
-    user_debts[user_id] = user_debts.get(user_id, 0) + amount
-    await ctx.send(f"**{ctx.author.display_name}** borrowed {amount} coins. Use them wisely... or don't.")
-
-@bot.command()
-async def buy(ctx, *, item: str):
-    user_id = ctx.author.id
-    item = item.lower()
-    prices = {
-        "dog": 500,
-        "cat": 500,
+async def helpme(ctx):
         "car": 1500,
         "house": 5000,
         "luxury car": 8000,
@@ -186,8 +155,6 @@ def generate_random_file_no():
 def generate_masked_ssn():
     last_four = ''.join([str(random.randint(0, 9)) for _ in range(4)])
     return f"XXX-XX-{last_four}"
-
-
 async def generate_personnel_file(user):
     def check(m):
         return m.author == user and isinstance(m.channel, discord.DMChannel)
