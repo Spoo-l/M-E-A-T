@@ -46,6 +46,7 @@ async def generate_personnel_file(user):
     questions = [
         ("Enter NAME:", "name"),
         ("Enter FACTION:", "faction"),
+        ("Enter USERNAME:", "username"),
         ("Enter DATE OF BIRTH:", "dob"),
         ("Enter PLACE OF BIRTH:", "place_of_birth"),
         ("Enter ACTIVE DUTY DATE:", "active_duty"),
@@ -104,6 +105,7 @@ async def generate_personnel_file(user):
   SERIAL NO.:     {serial_no}
 
   FACTION:        {answers['faction']}
+  ONLINE ALIAS:   {answers['username']}
 
 -----------------------------------
 
