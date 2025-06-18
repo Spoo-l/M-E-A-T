@@ -36,12 +36,13 @@ def generate_random_file_no():
 def generate_masked_ssn():
     return f"XXX-XX-{''.join([str(random.randint(0, 9)) for _ in range(4)])}"
 
-async def generate_personnel_file(user):
+
+    
+  async def generate_personnel_file(user):
     def check(m): return m.author == user and isinstance(m.channel, discord.DMChannel)
 
     questions = [
         ("Enter NAME:", "full name"),
-        ("Enter FACTION:", "faction"),
         ("Enter USERNAME:", "username"),
         ("Enter DATE OF BIRTH:", "dob"),
         ("Enter PLACE OF BIRTH:", "place_of_birth"),
@@ -75,39 +76,42 @@ async def generate_personnel_file(user):
         return
 
     class FactionSelect(discord.ui.Select):
-    def __init__(self):
-        options = [
-            discord.SelectOption(label="SpecGru", value="SpecGru"),
-            discord.SelectOption(label="Shadow Company", value="Shadow Company"),
-            discord.SelectOption(label="KorTac", value="KorTac"),
-            discord.SelectOption(label="141", value="141"),
-            discord.SelectOption(label="Konni", value="Konni")
-        ]
-        super().__init__(placeholder="Choose a faction", min_values=1, max_values=1, options=options)
+        def __init__(self):
+            options = [
+                discord.SelectOption(label="SpecGru", value="specgru"),
+                discord.SelectOption(label="Shadow Company", value="shadow company"),
+                discord.SelectOption(label="KorTac", value="kortac"),
+                discord.SelectOption(label="141", value="141"),
+                discord.SelectOption(label="Konni", value="konni")
+            ]
+            super().__init__(placeholder="Choose a faction", min_values=1, max_values=1, options=options)
 
-    async def callback(self, interaction: discord.Interaction):
-        if interaction.user != user:
-            await interaction.response.send_message("This isn’t your session.", ephemeral=True)
-            return
-        answers["faction"] = self.values[0]
-        await interaction.response.send_message(f"You selected: {self.values[0]}", ephemeral=True)
-        self.view.stop()
+        async def callback(self, interaction: discord.Interaction):
+            if interaction.user != user:
+                await interaction.response.send_message("This isn’t your session.", ephemeral=True)
+                return
+            answers["faction"] = self.values[0]
+            await interaction.response.send_message(f"You selected: {self.values[0].title()}", ephemeral=True)
+            self.view.stop()
 
-class FactionView(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=60)
-        self.add_item(FactionSelect())
+    class FactionView(View):
+        def __init__(self):
+            super().__init__(timeout=60)
+            self.add_item(FactionSelect())
 
-await user.send("**Select your FACTION from the list below:**")
-faction_view = FactionView()
-await user.send(view=faction_view)
-await faction_view.wait()
+    await user.send("**Select your FACTION from the list below:**")
+    faction_view = FactionView()
+    await user.send(view=faction_view)
+    await faction_view.wait()
 
-if "faction" not in answers:
-    await user.send("You didn’t select a faction in time. Try again.")
-    return
+    if "faction" not in answers:
+        await user.send("You didn’t select a faction in time. Try again.")
+        return
+
+    for prompt, key in questions:
+        await user.send(prompt)
         try:
-            msg = await bot.wait_for('message', check=check, timeout=120)
+            msg = await bot.wait_for("message", check=check, timeout=120)
             answers[key] = msg.content
         except asyncio.TimeoutError:
             await user.send("Timeout. Try again later.")
@@ -126,7 +130,7 @@ if "faction" not in answers:
   NAME:           {answers['full name']}
   SERIAL NO.:     {serial_no}
 
-  FACTION:        {answers['faction']}
+  FACTION:        {answers['faction'].title()}
   ONLINE ALIAS:   {answers['username']}
 
 -----------------------------------
@@ -209,10 +213,9 @@ if "faction" not in answers:
             else:
                 await user.send("Could not locate faction thread.")
         else:
-            await user.send("Invalid FACTION. No thread mapped.Try again or recheck guidelines")
+            await user.send("Invalid FACTION. No thread mapped.")
     else:
         await user.send("File not submitted.")
-
 @bot.event
 async def on_ready():
     print(f"Bot is online! Logged in as {bot.user}")
