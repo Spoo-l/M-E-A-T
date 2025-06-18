@@ -22,25 +22,21 @@ TRIGGER_EMOJI = "<:check:1383527537640083556>"
 file_requests = {}
 
 FACTION_THREADS = {
-    "SpecGru": 1382555575774220339,
-    "Shadow Company": 1382555520388431964,
-    "KorTac": 1382555644502216744,
+    "specgru": 1382555575774220339,
+    "shadow company": 1382555520388431964,
+    "kortac": 1382555644502216744,
     "141": 1382555452772192399,
-    "Konni": 1382556557631426630
+    "konni": 1382556557631426630
 }
 
 def generate_random_file_no():
-    letters = ''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ', k=3))
-    numbers = ''.join(random.choices('0123456789', k=2))
-    return f"{letters}-{numbers}"
+    return f"{''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ', k=3))}-{''.join(random.choices('0123456789', k=2))}"
 
 def generate_masked_ssn():
-    last_four = ''.join([str(random.randint(0, 9)) for _ in range(4)])
-    return f"XXX-XX-{last_four}"
+    return f"XXX-XX-{''.join([str(random.randint(0, 9)) for _ in range(4)])}"
 
 async def generate_personnel_file(user):
-    def check(m):
-        return m.author == user and isinstance(m.channel, discord.DMChannel)
+    def check(m): return m.author == user and isinstance(m.channel, discord.DMChannel)
 
     questions = [
         ("Enter NAME:", "full name"),
@@ -55,7 +51,6 @@ async def generate_personnel_file(user):
         ("Enter SERVICE STATUS:", "service_status"),
         ("Enter any NOTES:", "notes"),
     ]
-
     answers = {}
 
     class ConfirmView(View):
@@ -69,32 +64,31 @@ async def generate_personnel_file(user):
                 self.value = True
                 await interaction.response.edit_message(content="✅ File creation started.", view=None)
                 self.stop()
-            else:
-                await interaction.response.send_message("You can’t confirm someone else’s file.", ephemeral=True)
 
-    try:
-        await user.send("**CREATING FILE. . .** Click OK to begin.")
-        confirm_view = ConfirmView()
-        await user.send(view=confirm_view)
-        await confirm_view.wait()
+    await user.send("**CREATING FILE. . .** Click OK to begin.")
+    confirm_view = ConfirmView()
+    await user.send(view=confirm_view)
+    await confirm_view.wait()
+    if not confirm_view.value:
+        await user.send("You didn’t confirm. File process cancelled.")
+        return
 
-        if not confirm_view.value:
-            await user.send("You didn’t confirm. File process cancelled.")
-            return
-
-        await user.send("Answer each question carefully. FACTION must match: SpecGru, Shadow Company, KorTac, 141, or Konni.")
-
-        for prompt, key in questions:
-            await user.send(prompt)
+    await user.send("Answer each question carefully. FACTION must match: SpecGru, Shadow Company, KorTac, 141, or Konni.")
+    for prompt, key in questions:
+        await user.send(prompt)
+        try:
             msg = await bot.wait_for('message', check=check, timeout=120)
             answers[key] = msg.content
+        except asyncio.TimeoutError:
+            await user.send("Timeout. Try again later.")
+            return
 
-        serial_no = generate_random_file_no()
-        ssn = generate_masked_ssn()
-        today = datetime.today().strftime("%d %b %Y")
+    serial_no = generate_random_file_no()
+    ssn = generate_masked_ssn()
+    today = datetime.today().strftime("%d %b %Y")
 
-        def format_file():
-            return f"""
+    def format_file():
+        return f"""
 ===================================
  MILITARY PERSONNEL FILE 
 ===================================
@@ -127,95 +121,88 @@ async def generate_personnel_file(user):
   DATE FILED:        {today}
 """
 
-        class EditButton(Button):
-            def __init__(self, label, key):
-                super().__init__(label=label.upper(), style=discord.ButtonStyle.secondary, row=0)
-                self.key = key
+    class EditButton(Button):
+        def __init__(self, label, key):
+            super().__init__(label=label.upper(), style=discord.ButtonStyle.secondary)
+            self.key = key
 
-            async def callback(self, interaction: discord.Interaction):
-                if interaction.user != user:
-                    await interaction.response.send_message("You can't edit someone else's file.", ephemeral=True)
-                    return
-                await interaction.response.send_message(f"Send new value for {self.key.upper()}:", ephemeral=True)
-                try:
-                    new_msg = await bot.wait_for("message", check=check, timeout=60)
-                    answers[self.key] = new_msg.content
-                    await interaction.followup.send(f"{self.key.upper()} updated.", ephemeral=True)
-                except asyncio.TimeoutError:
-                    await interaction.followup.send("Timeout. Field unchanged.", ephemeral=True)
+        async def callback(self, interaction: discord.Interaction):
+            if interaction.user != user:
+                await interaction.response.send_message("You can't edit someone else's file.", ephemeral=True)
+                return
+            await interaction.response.send_message(f"Send new value for {self.key.upper()}:", ephemeral=True)
+            try:
+                new_msg = await bot.wait_for("message", check=check, timeout=60)
+                answers[self.key] = new_msg.content
+                await interaction.followup.send(f"{self.key.upper()} updated.", ephemeral=True)
+            except asyncio.TimeoutError:
+                await interaction.followup.send("Timeout. Field unchanged.", ephemeral=True)
 
-        class EditView(View):
-            def __init__(self):
-                super().__init__(timeout=180)
-                for _, key in questions:
-                    self.add_item(EditButton(label=key, key=key))
+    class EditView(View):
+        def __init__(self):
+            super().__init__(timeout=180)
+            for _, key in questions:
+                self.add_item(EditButton(label=key, key=key))
 
-        await user.send("Here’s your draft file:")
-        await user.send(f"```{format_file()}```")
-        await user.send("Want to edit anything? Choose a field below:", view=EditView())
-        await asyncio.sleep(60)
+    await user.send("Here’s your draft file:")
+    await user.send(f"```{format_file()}```")
+    await user.send("Want to edit anything? Choose a field below:", view=EditView())
+    await asyncio.sleep(60)
 
-        await user.send("Final version:")
-        await user.send(f"```{format_file()}```")
+    await user.send("Final version:")
+    await user.send(f"```{format_file()}```")
 
-        class SubmitView(View):
-            def __init__(self):
-                super().__init__(timeout=60)
-                self.confirmed = False
+    class SubmitView(View):
+        def __init__(self):
+            super().__init__(timeout=60)
+            self.confirmed = False
 
-            @discord.ui.button(label="Submit File", style=discord.ButtonStyle.success)
-            async def submit(self, interaction: discord.Interaction, button: discord.ui.Button):
-                if interaction.user == user:
-                    self.confirmed = True
-                    await interaction.response.send_message("File submitted.", ephemeral=True)
-                    self.stop()
+        @discord.ui.button(label="Submit File", style=discord.ButtonStyle.success)
+        async def submit(self, interaction: discord.Interaction, button: discord.ui.Button):
+            if interaction.user == user:
+                self.confirmed = True
+                await interaction.response.send_message("File submitted.", ephemeral=True)
+                self.stop()
 
-        submit_view = SubmitView()
-        await user.send("Submit this file to your FACTION thread?", view=submit_view)
-        await submit_view.wait()
+    submit_view = SubmitView()
+    await user.send("Submit this file to your FACTION thread?", view=submit_view)
+    await submit_view.wait()
 
-        if submit_view.confirmed:
-            faction_key = answers["faction"].strip().lower()
-            thread_id = FACTION_THREADS.get(faction_key)
-            if thread_id:
-                thread = bot.get_channel(thread_id)
-                if thread:
-                    await thread.send(f"```{format_file()}```")
-                    await user.send("File posted to faction thread.")
-                else:
-                    await user.send("Could not locate faction thread.")
+    if submit_view.confirmed:
+        faction_key = answers["faction"].strip().lower()
+        thread_id = FACTION_THREADS.get(faction_key)
+        if thread_id:
+            thread = bot.get_channel(thread_id)
+            if thread:
+                await thread.send(f"```{format_file()}```")
+                await user.send("File posted to faction thread.")
             else:
-                await user.send(" Invalid FACTION. No thread mapped.")
+                await user.send("Could not locate faction thread.")
         else:
-            await user.send("File not submitted.")
-
-    except asyncio.TimeoutError:
-        await user.send("You ran out of time. Try again.")
-    except discord.Forbidden:
-        pass
+            await user.send("Invalid FACTION. No thread mapped.")
+    else:
+        await user.send("File not submitted.")
 
 @bot.event
 async def on_ready():
     print(f"Bot is online! Logged in as {bot.user}")
-
 
 @bot.event
 async def on_message(message):
     if message.author.bot:
         return
 
-
     if message.channel.id == FISH_CHANNEL_ID and message.content.strip().lower() == "fish":
         member_role = discord.utils.get(message.guild.roles, id=MEMBER_ROLE_ID)
-        if member_role:
+        unverified_role = discord.utils.get(message.guild.roles, name="Unverified")
+        if member_role and member_role not in message.author.roles:
             try:
-                await message.author.add_roles(member_role, reason="Said 'Fish' in the designated channel")
-                await message.channel.send(f"{message.author.mention} has been assigned the Member role.")
-            except discord.Forbidden:
-                await message.channel.send("I don’t have permission to assign roles.")
-            except discord.HTTPException as e:
-                await message.channel.send(f"Role assignment failed: {e}")
-
+                await message.author.add_roles(member_role)
+                if unverified_role in message.author.roles:
+                    await message.author.remove_roles(unverified_role)
+                await message.add_reaction("✅")
+            except Exception as e:
+                await message.channel.send(f"Error verifying: {e}", delete_after=10)
 
     if message.content.lower() == "file":
         file_requests[message.id] = message.author.id
@@ -226,7 +213,6 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-
 @bot.event
 async def on_reaction_add(reaction, user):
     if user.bot:
@@ -236,27 +222,18 @@ async def on_reaction_add(reaction, user):
         return
 
     message = reaction.message
-    guild = message.guild
-    if not guild:
-        return
-
-    role = discord.utils.get(guild.roles, id=AUTHORIZED_ROLE_ID)
-    if role not in user.roles:
-        return
-
     if message.id in file_requests:
-        target_user_id = file_requests[message.id]
-        target_user = guild.get_member(target_user_id)
+        target_user = message.guild.get_member(file_requests[message.id])
         if target_user:
             try:
                 await message.channel.send(f"{target_user.mention}, check your DMs.")
                 await generate_personnel_file(target_user)
-                del file_requests[message.id]
             except discord.Forbidden:
                 await message.channel.send(
-                    f"{target_user.mention}, I couldn’t DM you. "
-                    f"Please enable messages from server members."
+                    f"{target_user.mention}, I couldn’t DM you. Enable messages from server members."
                 )
+            finally:
+                del file_requests[message.id]
 
 @bot.event
 async def on_member_join(member):
