@@ -62,7 +62,7 @@ async def generate_personnel_file(user):
         async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
             if interaction.user == user:
                 self.value = True
-                await interaction.response.edit_message(content="✅ File creation started.", view=None)
+                await interaction.response.edit_message(content="File creation started.", view=None)
                 self.stop()
 
     await user.send("**CREATING FILE. . .** Click OK to begin.")
@@ -147,7 +147,7 @@ async def generate_personnel_file(user):
     await user.send("Here’s your draft file:")
     await user.send(f"```{format_file()}```")
     await user.send("Want to edit anything? Choose a field below:", view=EditView())
-    await asyncio.sleep(60)
+    await asyncio.sleep(20)
 
     await user.send("Final version:")
     await user.send(f"```{format_file()}```")
@@ -179,7 +179,7 @@ async def generate_personnel_file(user):
             else:
                 await user.send("Could not locate faction thread.")
         else:
-            await user.send("Invalid FACTION. No thread mapped.")
+            await user.send("Invalid FACTION. No thread mapped.Try again or recheck guidelines")
     else:
         await user.send("File not submitted.")
 
@@ -375,5 +375,18 @@ async def slot(ctx, bet: int):
 @bot.command()
 async def ping(ctx):
     await ctx.send("shut up.")
+    
+@bot.command(name="personnel")
+async def personnel(ctx):
+    if isinstance(ctx.channel, discord.DMChannel):
+        await ctx.send("Starting file creation...")
+        await generate_personnel_file(ctx.author)
+    else:
+        try:
+            await ctx.author.send("Starting file creation...")
+            await ctx.send(f"{ctx.author.mention} Check your DMs!")
+            await generate_personnel_file(ctx.author)
+        except discord.Forbidden:
+            await ctx.send(f"{ctx.author.mention}, I couldn’t DM you. Make sure your DMs are open.")
 bot.run(os.getenv("DISCORD_TOKEN"))
 
