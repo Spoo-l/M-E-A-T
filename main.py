@@ -22,11 +22,11 @@ TRIGGER_EMOJI = "<:check:1383527537640083556>"
 file_requests = {}
 
 FACTION_THREADS = {
-    "specgru": 1382555575774220339,
-    "shadow company": 1382555520388431964,
-    "kortac": 1382555644502216744,
+    "SpecGru": 1382555575774220339,
+    "Shadow Company": 1382555520388431964,
+    "KorTac": 1382555644502216744,
     "141": 1382555452772192399,
-    "konni": 1382556557631426630
+    "Konni": 1382556557631426630
 }
 
 def generate_random_file_no():
