@@ -369,6 +369,19 @@ async def slot(ctx, bet: int):
 async def ping(ctx):
     await ctx.send("shut up.")
     
+    import asyncio
+from discord.ext import commands
+
+@bot.command()
+async def threadid(ctx):
+    try:
+        await ctx.author.send(f"This thread's ID is: `{ctx.channel.id}`")
+    except discord.Forbidden:
+        await ctx.send("I couldn't DM you. Make sure your DMs are open.", delete_after=3)
+        return
+    await asyncio.sleep(2)
+    await ctx.message.delete()
+    
 @bot.command(name="personnel")
 async def personnel(ctx):
     if isinstance(ctx.channel, discord.DMChannel):
