@@ -21,12 +21,13 @@ TRIGGER_EMOJI = "<:check:1383527537640083556>"
 FACTION_PARENT_CHANNEL_ID = 1382554488430133362
 file_requests = {}
 
+
 FACTION_THREADS = {
-    "SpecGru": 1382555575774220339,
-    "Shadow Company": 1382555520388431964,
-    "KorTac": 1382555644502216744,
+    "specgru": 1382555575774220339,
+    "shadow sompany": 1382555520388431964,
+    "kortac": 1382555644502216744,
     "141": 1382555452772192399,
-    "Konni": 1382556557631426630
+    "konni": 1382556557631426630
 }
 
 def generate_random_file_no():
@@ -73,9 +74,38 @@ async def generate_personnel_file(user):
         await user.send("You didn’t confirm. File process cancelled.")
         return
 
-    await user.send("Answer each question carefully. FACTION must match: SpecGru, Shadow Company, KorTac, 141, or Konni.")
-    for prompt, key in questions:
-        await user.send(prompt)
+    class FactionSelect(discord.ui.Select):
+    def __init__(self):
+        options = [
+            discord.SelectOption(label="SpecGru", value="SpecGru"),
+            discord.SelectOption(label="Shadow Company", value="Shadow Company"),
+            discord.SelectOption(label="KorTac", value="KorTac"),
+            discord.SelectOption(label="141", value="141"),
+            discord.SelectOption(label="Konni", value="Konni")
+        ]
+        super().__init__(placeholder="Choose a faction", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.user != user:
+            await interaction.response.send_message("This isn’t your session.", ephemeral=True)
+            return
+        answers["faction"] = self.values[0]
+        await interaction.response.send_message(f"You selected: {self.values[0]}", ephemeral=True)
+        self.view.stop()
+
+class FactionView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=60)
+        self.add_item(FactionSelect())
+
+await user.send("**Select your FACTION from the list below:**")
+faction_view = FactionView()
+await user.send(view=faction_view)
+await faction_view.wait()
+
+if "faction" not in answers:
+    await user.send("You didn’t select a faction in time. Try again.")
+    return
         try:
             msg = await bot.wait_for('message', check=check, timeout=120)
             answers[key] = msg.content
