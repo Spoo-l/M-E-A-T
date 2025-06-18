@@ -38,13 +38,12 @@ def generate_masked_ssn():
     last_four = ''.join([str(random.randint(0, 9)) for _ in range(4)])
     return f"XXX-XX-{last_four}"
 
-
 async def generate_personnel_file(user):
     def check(m):
         return m.author == user and isinstance(m.channel, discord.DMChannel)
 
     questions = [
-        ("Enter NAME:", "name"),
+        ("Enter NAME:", "full name"),
         ("Enter FACTION:", "faction"),
         ("Enter USERNAME:", "username"),
         ("Enter DATE OF BIRTH:", "dob"),
@@ -62,36 +61,35 @@ async def generate_personnel_file(user):
     class ConfirmView(View):
         def __init__(self):
             super().__init__(timeout=60)
-            self.value = None
+            self.value = False
 
         @discord.ui.button(label="OK", style=discord.ButtonStyle.success)
         async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
             if interaction.user == user:
                 self.value = True
-                await interaction.response.edit_message(content="**File creation started.**", view=None)
+                await interaction.response.edit_message(content="✅ File creation started.", view=None)
                 self.stop()
             else:
-                await interaction.response.send_message("You are not authorized to confirm this.", ephemeral=True)
+                await interaction.response.send_message("You can’t confirm someone else’s file.", ephemeral=True)
 
     try:
-        await user.send("**CREATING FILE. . .** Click the button below to proceed.")
-        view = ConfirmView()
-        await user.send(view=view)
-        await view.wait()
+        await user.send("**CREATING FILE. . .** Click OK to begin.")
+        confirm_view = ConfirmView()
+        await user.send(view=confirm_view)
+        await confirm_view.wait()
 
-        if not view.value:
-            await user.send("You didn’t click OK. Process canceled.")
+        if not confirm_view.value:
+            await user.send("You didn’t confirm. File process cancelled.")
             return
 
-        await user.send("Building your MILITARY PERSONNEL FILE. Answer each question below. Make sure FACTION is spelled exactly like one of: SpecGru, Shadow Company, KorTac, 141, or Konni.")
+        await user.send("Answer each question carefully. FACTION must match: SpecGru, Shadow Company, KorTac, 141, or Konni.")
 
-        for question, key in questions:
-            await user.send(question)
+        for prompt, key in questions:
+            await user.send(prompt)
             msg = await bot.wait_for('message', check=check, timeout=120)
             answers[key] = msg.content
 
-        serial_no = generate_random_serial()
-        file_no = generate_random_file_no()
+        serial_no = generate_random_file_no()
         ssn = generate_masked_ssn()
         today = datetime.today().strftime("%d %b %Y")
 
@@ -101,7 +99,7 @@ async def generate_personnel_file(user):
  MILITARY PERSONNEL FILE 
 ===================================
 
-  NAME:           {answers['name']}
+  NAME:           {answers['full name']}
   SERIAL NO.:     {serial_no}
 
   FACTION:        {answers['faction']}
@@ -117,7 +115,7 @@ async def generate_personnel_file(user):
   LAST RANK:         {answers['last_rank']}
   SERVICE STATUS:    {answers['service_status']}
 
-  FILE NO.:          {file_no}
+  FILE NO.:          {generate_random_file_no()}
   SOCIAL SECURITY:   {ssn}
 
   NOTES:
@@ -129,38 +127,35 @@ async def generate_personnel_file(user):
   DATE FILED:        {today}
 """
 
-        await user.send("Here is your generated file:")
-        await user.send(f"```{format_file()}```")
-
         class EditButton(Button):
             def __init__(self, label, key):
-                super().__init__(label=label, style=discord.ButtonStyle.primary)
+                super().__init__(label=label.upper(), style=discord.ButtonStyle.secondary, row=0)
                 self.key = key
 
             async def callback(self, interaction: discord.Interaction):
                 if interaction.user != user:
-                    await interaction.response.send_message("This isn't your file to edit.", ephemeral=True)
+                    await interaction.response.send_message("You can't edit someone else's file.", ephemeral=True)
                     return
-                await interaction.response.send_message(f"Re-enter value for {self.key.upper()}:", ephemeral=True)
+                await interaction.response.send_message(f"Send new value for {self.key.upper()}:", ephemeral=True)
                 try:
-                    new_msg = await bot.wait_for('message', check=check, timeout=60)
+                    new_msg = await bot.wait_for("message", check=check, timeout=60)
                     answers[self.key] = new_msg.content
                     await interaction.followup.send(f"{self.key.upper()} updated.", ephemeral=True)
                 except asyncio.TimeoutError:
-                    await interaction.followup.send("You took too long. Field unchanged.", ephemeral=True)
+                    await interaction.followup.send("Timeout. Field unchanged.", ephemeral=True)
 
         class EditView(View):
             def __init__(self):
-                super().__init__(timeout=120)
+                super().__init__(timeout=180)
                 for _, key in questions:
-                    self.add_item(EditButton(label=key.upper(), key=key))
+                    self.add_item(EditButton(label=key, key=key))
 
-        await user.send("Would you like to edit any field?")
-        view = EditView()
-        await user.send("Click a button below to edit a specific field:", view=view)
+        await user.send("Here’s your draft file:")
+        await user.send(f"```{format_file()}```")
+        await user.send("Want to edit anything? Choose a field below:", view=EditView())
         await asyncio.sleep(60)
 
-        await user.send("Here’s your updated file:")
+        await user.send("Final version:")
         await user.send(f"```{format_file()}```")
 
         class SubmitView(View):
@@ -174,33 +169,30 @@ async def generate_personnel_file(user):
                     self.confirmed = True
                     await interaction.response.send_message("File submitted.", ephemeral=True)
                     self.stop()
-                else:
-                    await interaction.response.send_message("This isn't your file to submit.", ephemeral=True)
 
         submit_view = SubmitView()
-        await user.send("Click to submit file to the appropriate faction thread.", view=submit_view)
+        await user.send("Submit this file to your FACTION thread?", view=submit_view)
         await submit_view.wait()
 
         if submit_view.confirmed:
-            faction_name = answers['faction']
-            thread_id = FACTION_THREADS.get(faction_name)
+            faction_key = answers["faction"].strip().lower()
+            thread_id = FACTION_THREADS.get(faction_key)
             if thread_id:
                 thread = bot.get_channel(thread_id)
                 if thread:
                     await thread.send(f"```{format_file()}```")
-                    await user.send("Your file was sent to the faction thread.")
+                    await user.send("File posted to faction thread.")
                 else:
-                    await user.send("Could not find the thread. Check FACTION spelling.")
+                    await user.send("Could not locate faction thread.")
             else:
-                await user.send("No thread mapped for that FACTION. Try again or recheck guidelines.")
+                await user.send(" Invalid FACTION. No thread mapped.")
         else:
-            await user.send("You didn’t submit the file.")
+            await user.send("File not submitted.")
 
     except asyncio.TimeoutError:
-        await user.send("You took too long to respond. Try again later.")
+        await user.send("You ran out of time. Try again.")
     except discord.Forbidden:
         pass
-
 
 @bot.event
 async def on_ready():
