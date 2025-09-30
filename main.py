@@ -2,6 +2,14 @@ import os
 import random
 import asyncio
 from datetime import datetime
+import sys, types
+if "audioop" not in sys.modules:
+    audioop_stub = types.ModuleType("audioop")
+    def _not_supported(*args, **kwargs):
+        raise NotImplementedError("audioop is not available in Python 3.13")
+    audioop_stub.add = _not_supported
+    audioop_stub.mul = _not_supported
+    sys.modules["audioop"] = audioop_stub
 
 import discord
 from discord.ext import commands
