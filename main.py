@@ -18,7 +18,7 @@ from discord.ui import Button, View
 AUTHORIZED_ROLE_ID = 1422228153333715095
 MEMBER_ROLE_ID = 1422228195603906612
 FISH_CHANNEL_ID = 1483605726499967040
-TRIGGER_EMOJI = "<:check:1422984295370195005>"
+TRIGGER_EMOJI = "✅"
 FACTION_PARENT_CHANNEL_ID = 1421546273462419536
 DEFAULT_BALANCE = 1000
 MAX_BET = 500
@@ -201,7 +201,7 @@ async def generate_personnel_file(user):
             for _, key in questions:
                 self.add_item(EditButton(label=key, key=key))
 
-    await user.send("Here’s your draft file:")
+    await user.send("Your draft file:")
     await user.send(f"```{format_file()}```")
     await user.send("Want to edit anything? Choose a field below:", view=EditView())
     await asyncio.sleep(20)
