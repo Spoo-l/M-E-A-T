@@ -33,12 +33,12 @@ SLOTS = [
 ]
 
 FACTION_THREADS = {
-    "specgru": 1421546666867032085,
-    "shadow company": 1421546457017745458,
-    "kortac": 1382555644502216744,
-    "141": 1421546381814005861,
-    "konni": 1421546599229689898,
-    "chimera": 1421546719769923685
+    "specgru": 1535100279308034120,
+    "shadow company": 1535100351181619300,
+    "kortac": 1535100222319890473,
+    "141": 1535100019731071006,
+    "konni": 1535100159409659994,
+    "chimera": 1535100848827539466
 }
 
 
@@ -51,7 +51,6 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 user_balances = {}
 user_debts = {}
-file_requests = {}
 
 
 def generate_random_file_no():
@@ -270,36 +269,7 @@ async def on_message(message):
             except Exception as e:
                 await message.channel.send(f"Error verifying: {e}", delete_after=10)
 
-    if message.content.lower() == "file":
-        file_requests[message.id] = message.author.id
-        await message.channel.send(
-            f"{message.author.mention} has requested a file.\n"
-            f"<@&{AUTHORIZED_ROLE_ID}> react with {TRIGGER_EMOJI} to accept."
-        )
-
     await bot.process_commands(message)
-
-@bot.event
-async def on_reaction_add(reaction, user):
-    if user.bot:
-        return
-
-    if str(reaction.emoji) != TRIGGER_EMOJI:
-        return
-
-    message = reaction.message
-    if message.id in file_requests:
-        target_user = message.guild.get_member(file_requests[message.id])
-        if target_user:
-            try:
-                await message.channel.send(f"{target_user.mention}, check your DMs.")
-                await generate_personnel_file(target_user)
-            except discord.Forbidden:
-                await message.channel.send(
-                    f"{target_user.mention}, I couldn’t DM you. Enable messages from server members."
-                )
-            finally:
-                del file_requests[message.id]
 
 @bot.command()
 async def beg(ctx):
@@ -388,17 +358,21 @@ async def threadid(ctx):
     await asyncio.sleep(2)
     await ctx.message.delete()
 
-@bot.command(name="personnel")
-async def personnel(ctx):
-    if isinstance(ctx.channel, discord.DMChannel):
-        await ctx.send("Starting file creation...")
-        await generate_personnel_file(ctx.author)
-    else:
-        try:
-            await ctx.author.send("Starting file creation...")
-            await ctx.send(f"{ctx.author.mention} Check your DMs!")
-            await generate_personnel_file(ctx.author)
-        except discord.Forbidden:
-            await ctx.send(f"{ctx.author.mention}, I couldn’t DM you. Make sure your DMs are open.")
+@bot.command(name="file")
+async def file(ctx, member: discord.Member):
+    # Only allow Authorized role
+    if AUTHORIZED_ROLE_ID not in [role.id for role in ctx.author.roles]:
+        return await ctx.send("You don't have permission to start this.")
 
+    try:
+        await member.send("Starting file creation...")
+        await ctx.send(f"Started a file for {member.mention}.", delete_after=5)
+
+        await generate_personnel_file(member)
+
+    except discord.Forbidden:
+        await ctx.send(
+            f"{member.mention} has DMs disabled.",
+            delete_after=10
+        )
 bot.run(os.getenv("DISCORD_TOKEN"))
